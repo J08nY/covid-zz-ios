@@ -76,6 +76,7 @@ final class BeaconManager: NSObject {
 
         locationManager.delegate = self
         activateLocationTrackingForBeacons()
+
         configurePeripheralManager()
     }
 
@@ -90,6 +91,14 @@ final class BeaconManager: NSObject {
     func restart() {
         peripheralManager.stopAdvertising()
         configurePeripheralManager()
+        startAdvertisingAndMonitoring()
+    }
+
+    func startAdvertisingAndMonitoring() {
+        if let profileId = Defaults.profileId {
+            advertiseDevice(beacon: BeaconId(id: UInt32(profileId)))
+            startMonitoring()
+        }
     }
 
     func activateLocationTrackingForBeacons() {
@@ -102,13 +111,14 @@ final class BeaconManager: NSObject {
         guard !isMonitoring else { return }
         setupMonitoringRegion()
         guard let region = monitoringRegion else { return }
-
-        startMonitor(for: region)
+        Permissions.shared.request(for: .bluetooth) { [weak self] in
+            self?.startMonitor(for: region)
+        }
     }
 
     private func startMonitor(for region: CLBeaconRegion) {
         locationManager.startMonitoring(for: region)
-        after(.milliseconds(10)) { [weak self] in
+        after(.milliseconds(100)) { [weak self] in
             self?.locationManager.requestState(for: region)
         }
         isMonitoring = true
